@@ -1,0 +1,16 @@
+#------------------------------------------------------------
+# Date 2020-12-23      Manip: CI02_539x495
+#------------------------------------------------------------
+equivalent stress image = yes
+equivalent strain image = yes
+#
+stress image = yes
+strain image = yes
+#
+backstress image = yes
+#
+strain moment = yes
+stress moment = yes
+im_format=vtk
+#
+gamma image= yes

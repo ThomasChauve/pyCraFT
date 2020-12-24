@@ -1,0 +1,33 @@
+#------------------------------------------------------------
+# Date 2020-12-23      Manip: CI02_539x495
+#------------------------------------------------------------
+#
+#
+#------------------------------------------------------------
+# name of the file of the image of the microstructure
+microstructure=../CI02_539x495_micro.vtk
+#
+#------------------------------------------------------------
+# name of the file of the description of phases
+phases=../CI02_539x495.phase
+#
+#------------------------------------------------------------
+# name of the file describing the materials the phases are made of:
+materials=../../Law/glace3_oc2_5mai2011.mat
+#
+#------------------------------------------------------------
+# file of the loading conditions:
+loading=../CI02_539x495.load
+#
+#------------------------------------------------------------
+# file telling the outputs one wants to obtain:
+output=../CI02_539x495.output
+#
+#------------------------------------------------------------
+# The parameter C0 has to be set by craft:
+C0=auto
+#
+#------------------------------------------------------------
+# # required precision for equilibrium and for loading conditions:
+precision=1.e-4, 1.e-4
+#------------------------------------------------------------

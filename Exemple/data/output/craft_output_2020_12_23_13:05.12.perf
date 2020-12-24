@@ -1,0 +1,19 @@
+-----------------------------------------------------------------------------------
+                                             time (s)     %age                    
+-----------------------------------------------------------------------------------
+Basic scheme
+ time spent in reading input data        :    0.205      0.00
+ time spent in initalizing variables     :    0.000      0.00
+ time spent in behavior                  : 43581.657     99.43
+ time spent in FFT                       :   75.491      0.17
+ time spent in FFT-1                     :   52.386      0.12
+ time spent in applying Gamma0           :   30.145      0.07
+ time spent in update epsilon            :   14.431      0.03
+ time spent in extrapolate state variable:   38.373      0.09
+ time spent in phase to image            :   18.957      0.04
+ time spent in image to phase            :   16.028      0.04
+ time spent in saving output results     :    0.129      0.00
+ time spent in miscellaneous operations  :    0.000      0.00
+ other                                   :    2.059      0.00
+                                            --------------------
+ total time                               : 43829.861
