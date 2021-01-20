@@ -98,9 +98,7 @@ class runcraft(object):
                     
         # set data to extract
         # line with gamma
-        wanted_data=[time_data+'_strain11.vtk',time_data+'_strain22.vtk',time_data+'_strain33.vtk',time_data+'_strain12.vtk',time_data+'_strain13.vtk',time_data+'_strain23.vtk',time_data+'_stress11.vtk',time_data+'_stress22.vtk',time_data+'_stress33.vtk',time_data+'_stress12.vtk',time_data+'_stress13.vtk',time_data+'_stress23.vtk',time_data+'_gamma01.vtk',time_data+'_gamma02.vtk',time_data+'_gamma03.vtk',time_data+'_gamma04.vtk',time_data+'_gamma05.vtk',time_data+'_gamma06.vtk',time_data+'_gamma07.vtk',time_data+'_gamma08.vtk',time_data+'_gamma09.vtk',time_data+'_gamma10.vtk',time_data+'_gamma11.vtk',time_data+'_gamma12.vtk']
-        # line without gamma
-        # wanted_data=[time_data+'_strain11.vtk',time_data+'_strain22.vtk',time_data+'_strain33.vtk',time_data+'_strain12.vtk',time_data+'_strain13.vtk',time_data+'_strain23.vtk',time_data+'_stress11.vtk',time_data+'_stress22.vtk',time_data+'_stress33.vtk',time_data+'_stress12.vtk',time_data+'_stress13.vtk',time_data+'_stress23.vtk']
+        wanted_data=[time_data+'_strain11.vtk',time_data+'_strain22.vtk',time_data+'_strain33.vtk',time_data+'_strain12.vtk',time_data+'_strain13.vtk',time_data+'_strain23.vtk',time_data+'_stress11.vtk',time_data+'_stress22.vtk',time_data+'_stress33.vtk',time_data+'_stress12.vtk',time_data+'_stress13.vtk',time_data+'_stress23.vtk',time_data+'_gamma01.vtk',time_data+'_gamma02.vtk',time_data+'_gamma03.vtk',time_data+'_gamma04.vtk',time_data+'_gamma05.vtk',time_data+'_gamma06.vtk',time_data+'_gamma07.vtk',time_data+'_gamma08.vtk',time_data+'_gamma09.vtk',time_data+'_gamma10.vtk',time_data+'_gamma11.vtk',time_data+'_gamma12.vtk',time_data+'_rotation.vtk']
              
         ###########################
         # load strain/stress data #
@@ -134,16 +132,25 @@ class runcraft(object):
             ug  = reader.GetOutput()
             # extract the resolution
             res=ug.GetSpacing()[0]
-            # extract the matrix representing the map of this scalar
-            map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
+            dim=ug.GetDimensions()[0:2][::-1]
+            
                 
             # make the difference between strain and stress
             if j in range(6):
+                # extract the matrix representing the map of this scalar
+                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
                 tmp_strain[j]=im2d.image2d(map[::-1],res) 
             elif j in range(12):
+                # extract the matrix representing the map of this scalar
+                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
                 tmp_stress[j-6]=im2d.image2d(map[::-1],res)
             elif j in range(24):
-                tmp_gamma[j-12]=im2d.image2d(map[::-1],res)             
+                # extract the matrix representing the map of this scalar
+                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
+                tmp_gamma[j-12]=im2d.image2d(map[::-1],res)
+            elif j in range(25):
+                pd = ug.GetPointData()
+                tmp_rotation=vtk_to_numpy(pd.GetArray(0)).reshape([dim[0],dim[1],3])
             else:
                 print('error 01 : too much map')
         
@@ -152,9 +159,13 @@ class runcraft(object):
         self.stress=sTM.symetricTensorMap(tmp_stress[0],tmp_stress[1],tmp_stress[2],tmp_stress[3],tmp_stress[4],tmp_stress[5])
         # Build gamma map
         self.gamma=GamR.gammarun(tmp_gamma[0],tmp_gamma[1],tmp_gamma[2],tmp_gamma[3],tmp_gamma[4],tmp_gamma[5],tmp_gamma[6],tmp_gamma[7],tmp_gamma[8],tmp_gamma[9],tmp_gamma[10],tmp_gamma[11])
+        
+        
+        
+        self.rotation=tmp_rotation
 
         # remove split file
-        os.system('rm *strain1*.vtk *strain2*.vtk *stress1*.vtk *stress2*.vtk *33.vtk *gamma0*.vtk *gamma1*.vtk')
+        os.system('rm *strain1*.vtk *strain2*.vtk *stress1*.vtk *stress2*.vtk *33.vtk *gamma0*.vtk *gamma1*.vtk *rotation1.vtk *rotation2.vtk *rotation3.vtk' )
             
         # return in the current folder
         os.chdir(current)
