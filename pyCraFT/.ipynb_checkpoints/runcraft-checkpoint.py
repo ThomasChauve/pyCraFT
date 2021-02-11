@@ -19,6 +19,11 @@ import vtk
 from vtk.util.numpy_support import vtk_to_numpy
 import os
 import time
+import scipy
+import math
+import skimage.segmentation as sks
+import skimage.morphology as skm
+from tqdm.notebook import tqdm
 
 class runcraft(object):
     '''
@@ -230,3 +235,204 @@ class runcraft(object):
          
         #print(time.strftime('%d/%m/%y %H:%M:%S',time.localtime()))      
         return elstrain
+    
+    def outputIA(self,RX_image,name,listvar=[]):
+        '''
+        Export a csv file for IA input
+        :param RX_image: Binary images for classification in IA
+        :type run_folder: im2d.image2d
+        :param listvar: name of the output
+        :type time_data: str
+        :param listvar: list of variable to export, The name availaible are given bellow
+        :type time_data: list
+        :return: csv file, name.csv
+        
+        .. note:: 'Strain_eqVonMises', 'Stress_eqVonMises','elStrain' (elastic strain), 'StrainEnergy','StrainComponant' (eij), 'StressComponant' (sij), 'allGamma' (gi), 'activityGamma', 'systemGamma' sum of gamma for each glide system (3 values), 'disttoTJ/GB', 'misAngle' (misorientation angle of the closest grain boundary), 'SchmidFactor', 'diffStress' (s1-s3), 'diffStrain' (e1-e3)
+        '''
+        # Add RX data
+        IA_data=[]
+        IA_name=[]
+        IA_data.append(RX_image.field.flatten())
+        IA_name.append('RX')
+        ss=np.shape(RX_image.field)
+
+        if 'Strain_eqVonMises' in listvar:
+            IA_data.append(self.strain.eqVonMises().field.flatten())
+            IA_name.append('eqStrain')
+
+        if 'Stress_eqVonMises' in listvar:
+            IA_data.append(self.stress.eqVonMises().field.flatten())
+            IA_name.append('eqStrain')
+
+        if  'elStrain' in listvar :
+            IA_data.append(self.elstrain().field.flatten())
+            IA_name.append('elStrain')
+
+        if 'StrainEnergy' in listvar:
+            IA_data.append(self.strain_energy().field.flatten())
+            IA_name.append('StrainEnergy')
+
+        if 'StrainComponant' in listvar:
+            IA_data.append(self.strain.t11.field.flatten())
+            IA_name.append('exx')
+            IA_data.append(self.strain.t22.field.flatten())
+            IA_name.append('eyy')
+            IA_data.append(self.strain.t33.field.flatten())
+            IA_name.append('ezz')
+            IA_data.append(self.strain.t12.field.flatten())
+            IA_name.append('exy')
+            IA_data.append(self.strain.t13.field.flatten())
+            IA_name.append('exz')
+            IA_data.append(self.strain.t23.field.flatten())
+            IA_name.append('eyz')
+
+        if 'StressComponant' in listvar:
+            IA_data.append(self.stress.t11.field.flatten())
+            IA_name.append('sxx')
+            IA_data.append(self.stress.t22.field.flatten())
+            IA_name.append('syy')
+            IA_data.append(self.stress.t33.field.flatten())
+            IA_name.append('szz')
+            IA_data.append(self.stress.t12.field.flatten())
+            IA_name.append('sxy')
+            IA_data.append(self.stress.t13.field.flatten())
+            IA_name.append('sxz')
+            IA_data.append(self.stress.t23.field.flatten())
+            IA_name.append('syz')
+
+        if 'allGamma' in listvar:
+            IA_data.append(self.gamma.g01.map.field.flatten())
+            IA_name.append('g01')
+            IA_data.append(self.gamma.g02.map.field.flatten())
+            IA_name.append('g02')
+            IA_data.append(self.gamma.g03.map.field.flatten())
+            IA_name.append('g03')
+            IA_data.append(self.gamma.g04.map.field.flatten())
+            IA_name.append('g04')
+            IA_data.append(self.gamma.g05.map.field.flatten())
+            IA_name.append('g05')
+            IA_data.append(self.gamma.g06.map.field.flatten())
+            IA_name.append('g06')
+            IA_data.append(self.gamma.g07.map.field.flatten())
+            IA_name.append('g07')
+            IA_data.append(self.gamma.g08.map.field.flatten())
+            IA_name.append('g08')
+            IA_data.append(self.gamma.g09.map.field.flatten())
+            IA_name.append('g09')
+            IA_data.append(self.gamma.g10.map.field.flatten())
+            IA_name.append('g10')
+            IA_data.append(self.gamma.g11.map.field.flatten())
+            IA_name.append('g11')
+            IA_data.append(self.gamma.g12.map.field.flatten())
+            IA_name.append('g12')
+
+        if 'activityGamma' in listvar:
+            IA_data.append(self.gamma.gamma_activity(plane='ba').field.flatten())
+            IA_name.append('A_ba')
+            IA_data.append(self.gamma.gamma_activity(plane='pr').field.flatten())
+            IA_name.append('A_pr')
+            IA_data.append(self.gamma.gamma_activity(plane='py').field.flatten())
+            IA_name.append('A_py')
+
+        if 'systemGamma' in listvar:
+            IA_data.append(self.gamma.g01.map.field.flatten()+self.gamma.g02.map.field.flatten()+self.gamma.g03.map.field.flatten())
+            IA_name.append('Sys_ba')
+            IA_data.append(self.gamma.g04.map.field.flatten()+self.gamma.g05.map.field.flatten()+self.gamma.g06.map.field.flatten())
+            IA_name.append('Sys_pr')
+            IA_data.append(self.gamma.g07.map.field.flatten()+self.gamma.g08.map.field.flatten()+self.gamma.g09.map.field.flatten()+self.gamma.g10.map.field.flatten()+self.gamma.g11.map.field.flatten()+self.gamma.g12.map.field.flatten())
+            IA_name.append('Sys_py')
+
+        if 'disttoTJ/GB' in listvar:
+            im=scipy.ndimage.interpolation.zoom(self.grainId.field,2,order=0,mode='nearest')
+            BB=skm.skeletonize(sks.find_boundaries(im))
+
+            BB[0,:]=1
+            BB[-1,:]=1
+            BB[:,0]=1
+            BB[:,-1]=1
+
+            idBx,idBy=np.where(BB==1)
+            mconv=np.ones([3,3])
+            mconv[1,1]=2
+            idTx,idTy=np.where(scipy.signal.convolve2d(BB,mconv,mode='same')>4)
+
+            ss=np.shape(self.grainId.field)
+            dist_to_GB=np.zeros(ss) # dist to Grain Boundaries
+            dist_to_TJ=np.zeros(ss) # dist to Triple Junction
+
+            print('Compute dist to TJ and GB')
+
+            for i in tqdm(range(ss[0])):
+                for j in list(range(ss[1])):
+                    dist_to_GB[i,j]=np.min(((idBx/2-i)**2+(idBy/2-j)**2)**0.5)
+                    dist_to_TJ[i,j]=np.min(((idTx/2-i)**2+(idTy/2-j)**2)**0.5)
+
+            dist_to_GB=im2d.image2d(dist_to_GB,self.grainId.res)
+            dist_to_TJ=im2d.image2d(dist_to_TJ,self.grainId.res)
+            IA_data.append(dist_to_GB.field.flatten())
+            IA_name.append('dist_to_GB')
+
+            IA_data.append(dist_to_TJ.field.flatten())
+            IA_name.append('dist_to_TJ')
+
+        if 'misAngle' in listvar:
+            def euler2vec(phi1,phi):
+                return np.matrix([np.sin(phi1)*np.sin(phi),-np.cos(phi1)*np.sin(phi),np.cos(phi)])
+
+            ori=self.orientation
+            ss=np.shape(self.grainId.field)
+            CLg=np.zeros(ss)
+            misAngle=np.zeros(ss)
+            print('Compute misAngle')
+            for i in tqdm(range(ss[0])):
+                for j in list(range(ss[1])):
+                    nb=self.grainId.field[i,j]
+                    id=np.where(self.grainId.field!=nb)
+                    a=(i-id[0])**2+(j-id[1])**2
+                    ix=np.where(a==np.min(a))[0][0]
+
+                    CLg[i,j]=self.grainId.field[id[0][ix],id[1][ix]]
+
+                    id1=np.where(self.orientation[:,0]==CLg[i,j])[0][0]
+                    id2=np.where(self.orientation[:,0]==self.grainId.field[i,j])[0][0]
+
+                    misAngle[i,j]=math.acos(np.round(euler2vec(ori[id1,1],ori[id1,2])*np.transpose(euler2vec(ori[id2,1],ori[id2,2])),4))
+
+
+            misAngle=im2d.image2d(misAngle,self.grainId.res)
+
+            IA_data.append(misAngle.field.flatten())
+            IA_name.append('misAngle')   
+
+        if 'SchmidFactor' in listvar:
+            Schmid_factor=np.zeros(ss) # dist to Triple Junction
+            print('Compute Schmid Factor')
+            for i in np.unique(self.grainId.field.flatten()):
+                idGx,idGy=np.where(self.grainId.field==i)
+                ii=np.where(self.orientation[:,0]==i)[0]
+                Schmid_factor[idGx,idGy]=np.abs(0.5*np.sin(2*self.orientation[np.int(ii),2]))
+
+            Schmid_factor=im2d.image2d(Schmid_factor,self.grainId.res)
+
+
+            IA_data.append(Schmid_factor.field.flatten())
+            IA_name.append('Schmid_factor')
+
+        if 'diffStress' in listvar:
+            a,v=self.stress.diag(twod=False)
+            IA_data.append((a[2,:,:]-a[0,:,:]).flatten())
+            IA_name.append('diffStress')
+
+        if 'diffStrain' in listvar:
+            a,v=self.strain.diag(twod=False)
+            IA_data.append((a[2,:,:]-a[0,:,:]).flatten())
+            IA_name.append('diffStrain')
+
+        #Export
+        for i in list(range(len(IA_name))):
+            if i==0:
+                Head=IA_name[i]
+            else:
+                Head=Head+' '+IA_name[i]
+
+        np.savetxt(name+'.csv',np.transpose(np.array(IA_data)),header=Head,comments='')
