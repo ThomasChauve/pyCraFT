@@ -262,7 +262,7 @@ class runcraft(object):
 
         if 'Stress_eqVonMises' in listvar:
             IA_data.append(self.stress.eqVonMises().field.flatten())
-            IA_name.append('eqStrain')
+            IA_name.append('eqStress')
 
         if  'elStrain' in listvar :
             IA_data.append(self.elstrain().field.flatten())
