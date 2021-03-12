@@ -143,6 +143,28 @@ class image2d(object):
         self.res=res
         self.field=scipy.ndimage.interpolation.zoom(self.field,zoom,order=0,mode='nearest')
         
+    def smooth(self,mat=1/13*np.array([[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[0,1,1,1,0],[0,0,1,0,0]]),boundary='symm', fillvalue=0):
+        '''
+        Performed smoothing using convolved 2D function
+        :param mat: matrix for the convolution
+        :type mat: np.array
+        :param boundary: boundary : str {'fill', 'wrap', 'symm'}, optional
+                         A flag indicating how to handle boundaries:
+                        ``fill``
+                        pad input arrays with fillvalue.
+                        ``wrap``
+                        circular boundary conditions.
+                        ``symm``
+                        symmetrical boundary conditions. (default) 
+        type boundary: str
+        :param fillvalue:  fillvalue : scalar, optional
+                           Value to fill pad input arrays with. Default is 0.
+        :return: image
+        :rtype: image2d
+        '''
+        
+        self.field=scipy.signal.convolve2d(self.field,mat,mode='same',boundary=boundary)
+        
     def diff(self,axis):
         '''
         Derive the image along the axis define
@@ -176,6 +198,7 @@ class image2d(object):
         elif (type(other) is float):
             return image2d(self.field+other,self.res)
             
+    
     def __sub__(self, other):
         '''
         Subtract of 2 maps

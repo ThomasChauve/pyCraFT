@@ -13,6 +13,7 @@ import pyCraFT.image2d as im2d
 import pyCraFT.symetricTensorMap as sTM
 import pyCraFT.gammarun as GamR
 
+import image3d.image3d as im3d
 
 import numpy as np
 import vtk
@@ -65,21 +66,21 @@ class runcraft(object):
         # set up the vtk reader     
         reader = vtk.vtkDataSetReader() 
         # read the current folder
-        current=os.getcwd()
+        #current=os.getcwd()
         
         ######################
         # load microstrucure #
         ######################
-        os.chdir(run_folder)
+        #os.chdir(run_folder)
         # find name of the files
-        data_name=os.listdir()
+        data_name=os.listdir(run_folder)
         # get the microstructure
         # find 'vtk' file
         for k in range(len(data_name)):
                 if (data_name[k][len(data_name[k])-4:]=='.vtk'):
                     nb=k
         # set up the name of the file wanted    
-        reader.SetFileName(data_name[nb])
+        reader.SetFileName(run_folder+data_name[nb])
         # read the file
         reader.Update()
         # read the file output
@@ -87,9 +88,18 @@ class runcraft(object):
         # extract the resolution
         res=ug.GetSpacing()[0]
         # extract the matrix representing the map of this scalar
-        map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
+        ugdim=ug.GetDimensions()
         
-        self.grainId=im2d.image2d(map[::-1],res)
+        if ugdim[2]>1:
+            dim_im=3
+            fim=im3d.image3d
+        elif ugdim[2]==1:
+            dim_im=2
+            fim=im2d.image2d
+        
+        map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:dim_im][::-1]))
+        
+        self.grainId=fim(map[::-1],res)
         
         ####################
         # load orientation #
@@ -98,7 +108,7 @@ class runcraft(object):
         for k in range(len(data_name)):
                 if (data_name[k][len(data_name[k])-6:]=='.phase'):
                     nb=k
-        self.orientation=np.transpose(np.loadtxt(data_name[nb],unpack=True, skiprows=9, usecols=(0,2,3,4),dtype='f,f,f,f'))
+        self.orientation=np.transpose(np.loadtxt(run_folder+data_name[nb],unpack=True, skiprows=9, usecols=(0,2,3,4),dtype='f,f,f,f'))
                   
                     
         # set data to extract
@@ -108,18 +118,18 @@ class runcraft(object):
         ###########################
         # load strain/stress data #
         ###########################
-        tmp='output/'
-        os.chdir(tmp)
+        tmp=run_folder+'output/'
+        #os.chdir(tmp)
         # split data for stress, strain
-        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split *'+time_data+'_gamma.vtk'
+        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split '+tmp+'*'+time_data+'_gamma.vtk'
         os.system(tmp_split)
-        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split *'+time_data+'_strain.vtk'
+        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split '+tmp+'*'+time_data+'_strain.vtk'
         os.system(tmp_split)
-        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split *'+time_data+'_stress.vtk'
+        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split '+tmp+'*'+time_data+'_stress.vtk'
         os.system(tmp_split)
             
         # find data name
-        data_name=os.listdir()
+        data_name=os.listdir(tmp)
         # create self
         tmp_strain=list(np.arange(6))
         tmp_stress=list(np.arange(6))
@@ -130,32 +140,35 @@ class runcraft(object):
                 if (data_name[k][len(data_name[k])-len(wanted_data[j]):]==wanted_data[j]):
                     nb=k
             # set up the name of the file wanted    
-            reader.SetFileName(data_name[nb])
+            reader.SetFileName(tmp+data_name[nb])
             # read the file
             reader.Update()
             # read the file output
             ug  = reader.GetOutput()
             # extract the resolution
             res=ug.GetSpacing()[0]
-            dim=ug.GetDimensions()[0:2][::-1]
+            dim=ug.GetDimensions()[0:dim_im][::-1]
             
                 
             # make the difference between strain and stress
             if j in range(6):
                 # extract the matrix representing the map of this scalar
-                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
-                tmp_strain[j]=im2d.image2d(map[::-1],res) 
+                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:dim_im][::-1]))
+                tmp_strain[j]=fim(map[::-1],res) 
             elif j in range(12):
                 # extract the matrix representing the map of this scalar
-                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
-                tmp_stress[j-6]=im2d.image2d(map[::-1],res)
+                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:dim_im][::-1]))
+                tmp_stress[j-6]=fim(map[::-1],res)
             elif j in range(24):
                 # extract the matrix representing the map of this scalar
-                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:2][::-1]))
-                tmp_gamma[j-12]=im2d.image2d(map[::-1],res)
+                map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:dim_im][::-1]))
+                tmp_gamma[j-12]=fim(map[::-1],res)
             elif j in range(25):
                 pd = ug.GetPointData()
-                tmp_rotation=vtk_to_numpy(pd.GetArray(0)).reshape([dim[0],dim[1],3])
+                if dim_im==2:
+                    tmp_rotation=vtk_to_numpy(pd.GetArray(0)).reshape([dim[0],dim[1],3])
+                elif dim_im==3:
+                    tmp_rotation=vtk_to_numpy(pd.GetArray(0)).reshape([dim[0],dim[1],dim[2],3])
             else:
                 print('error 01 : too much map')
         
@@ -170,10 +183,10 @@ class runcraft(object):
         self.rotation=tmp_rotation
 
         # remove split file
-        os.system('rm *strain1*.vtk *strain2*.vtk *stress1*.vtk *stress2*.vtk *33.vtk *gamma0*.vtk *gamma1*.vtk *rotation1.vtk *rotation2.vtk *rotation3.vtk' )
+        os.system('rm '+tmp+'*strain1*.vtk '+tmp+'*strain2*.vtk '+tmp+'*stress1*.vtk '+tmp+'*stress2*.vtk '+tmp+'*33.vtk '+tmp+'*gamma0*.vtk '+tmp+'*gamma1*.vtk '+tmp+'*rotation1.vtk '+tmp+'*rotation2.vtk '+tmp+'*rotation3.vtk' )
             
         # return in the current folder
-        os.chdir(current)
+        #os.chdir(current)
         
         return
     
@@ -235,6 +248,61 @@ class runcraft(object):
          
         #print(time.strftime('%d/%m/%y %H:%M:%S',time.localtime()))      
         return elstrain
+    
+    def smooth(self,mat=0,boundary='symm', fillvalue=0):
+        '''
+        Performed smoothing using convolved 2D function
+        :param mat: matrix for the convolution
+        :type mat: np.array
+        :param boundary: boundary : str {'fill', 'wrap', 'symm'}, optional
+                         A flag indicating how to handle boundaries:
+                        ``fill``
+                        pad input arrays with fillvalue.
+                        ``wrap``
+                        circular boundary conditions.
+                        ``symm``
+                        symmetrical boundary conditions. (default) 
+        type boundary: str
+        :param fillvalue:  fillvalue : scalar, optional
+                           Value to fill pad input arrays with. Default is 0.
+        :return: imagescipy.signal.fftconvolve¶
+        :rtype: runcraft
+        '''
+        if mat==0 and len(self.grainId.field.shape)==2:
+            mat=1/13*np.array([[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[0,1,1,1,0],[0,0,1,0,0]])
+        elif mat==0 and len(self.grainId.field.shape)==3:
+            mat=1/25*np.array([[[0,0,0,0,0],[0,0,0,0,0],[0,0,1,0,0],[0,0,0,0,0],[0,0,0,0,0]],[[0,0,0,0,0],[0,0,1,0,0],[0,1,1,1,0],[0,0,1,0,0],[0,0,0,0,0]],[[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[0,1,1,1,0],[0,0,1,0,0]],[[0,0,0,0,0],[0,0,1,0,0],[0,1,1,1,0],[0,0,1,0,0],[0,0,0,0,0]],[[0,0,0,0,0],[0,0,0,0,0],[0,0,1,0,0],[0,0,0,0,0],[0,0,0,0,0]]])
+        
+        self.gamma.g01.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g02.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g03.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g04.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g05.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g06.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g07.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g08.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g09.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g10.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g11.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.gamma.g12.map.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+    
+        self.strain.t11.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.strain.t22.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.strain.t33.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.strain.t12.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.strain.t13.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.strain.t23.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        
+        self.stress.t11.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.stress.t22.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.stress.t33.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.stress.t12.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.stress.t13.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        self.stress.t23.smooth(mat=mat,boundary=boundary, fillvalue=fillvalue)
+        
+    
+    
+    
     
     def outputIA(self,RX_image,name,listvar=[]):
         '''
@@ -335,11 +403,11 @@ class runcraft(object):
             IA_name.append('A_py')
 
         if 'systemGamma' in listvar:
-            IA_data.append(self.gamma.g01.map.field.flatten()+self.gamma.g02.map.field.flatten()+self.gamma.g03.map.field.flatten())
+            IA_data.append((self.gamma.g01.map.field.flatten()**2+self.gamma.g02.map.field.flatten()**2+self.gamma.g03.map.field.flatten()**2)**.5)
             IA_name.append('Sys_ba')
-            IA_data.append(self.gamma.g04.map.field.flatten()+self.gamma.g05.map.field.flatten()+self.gamma.g06.map.field.flatten())
+            IA_data.append((self.gamma.g04.map.field.flatten()**2+self.gamma.g05.map.field.flatten()**2+self.gamma.g06.map.field.flatten()**2)**.5)
             IA_name.append('Sys_pr')
-            IA_data.append(self.gamma.g07.map.field.flatten()+self.gamma.g08.map.field.flatten()+self.gamma.g09.map.field.flatten()+self.gamma.g10.map.field.flatten()+self.gamma.g11.map.field.flatten()+self.gamma.g12.map.field.flatten())
+            IA_data.append((self.gamma.g07.map.field.flatten()**2+self.gamma.g08.map.field.flatten()**2+self.gamma.g09.map.field.flatten()**2+self.gamma.g10.map.field.flatten()**2+self.gamma.g11.map.field.flatten()**2+self.gamma.g12.map.field.flatten()**2)**.5)
             IA_name.append('Sys_py')
 
         if 'disttoTJ/GB' in listvar:
