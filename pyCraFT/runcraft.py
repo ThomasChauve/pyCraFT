@@ -15,6 +15,7 @@ import pyCraFT.gammarun as GamR
 
 import image3d.image3d as im3d
 
+import datetime
 import numpy as np
 import vtk
 from vtk.util.numpy_support import vtk_to_numpy
@@ -121,11 +122,11 @@ class runcraft(object):
         tmp=run_folder+'output/'
         #os.chdir(tmp)
         # split data for stress, strain
-        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split '+tmp+'*'+time_data+'_gamma.vtk'
+        tmp_split='vtk_split '+tmp+'*'+time_data+'_gamma.vtk'
         os.system(tmp_split)
-        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split '+tmp+'*'+time_data+'_strain.vtk'
+        tmp_split='vtk_split '+tmp+'*'+time_data+'_strain.vtk'
         os.system(tmp_split)
-        tmp_split='/home/chauvet/Documents/Rheolef/CraFT/craft_1.1.0/bin/vtk_split '+tmp+'*'+time_data+'_stress.vtk'
+        tmp_split='vtk_split '+tmp+'*'+time_data+'_stress.vtk'
         os.system(tmp_split)
             
         # find data name
@@ -304,7 +305,7 @@ class runcraft(object):
     
     
     
-    def outputIA(self,RX_image,name,listvar=[]):
+    def outputIA(self,RX_image,name,listvar=[],log=[]):
         '''
         Export a csv file for IA input
         :param RX_image: Binary images for classification in IA
@@ -315,8 +316,18 @@ class runcraft(object):
         :type time_data: list
         :return: csv file, name.csv
         
-        .. note:: 'Strain_eqVonMises', 'Stress_eqVonMises','elStrain' (elastic strain), 'StrainEnergy','StrainComponant' (eij), 'StressComponant' (sij), 'allGamma' (gi), 'activityGamma', 'systemGamma' sum of gamma for each glide system (3 values), 'disttoTJ/GB', 'misAngle' (misorientation angle of the closest grain boundary), 'SchmidFactor', 'diffStress' (s1-s3), 'diffStrain' (e1-e3)
+        .. note:: 'Strain_eqVonMises', 'Stress_eqVonMises','elStrain' (elastic strain), 'StrainEnergy','StrainComponant' (eij), 'StressComponant' (sij), 'allGamma' (gi), 'activityGamma', 'systemGamma' sum of gamma for each glide system (3 values), 'dist2TJ','dist2GB', 'misAngle' (misorientation angle of the closest grain boundary), 'SchmidFactor', 'diffStress' (s1-s3), 'diffStrain' (e1-e3), diff_schmid abs(schmid#1-schmid#2) for the closest GB)
         '''
+        # Write a log
+        f = open(name+'.log', "a")
+        f.write('Dim:'+str(RX_image.field.shape)+'\n')
+        f.write('Res:'+str(RX_image.res)+'\n')
+        for item in log:
+            f.write(item+'\n')
+            
+        f.write('Build: '+str(datetime.date.today()))
+        f.close()
+        
         # Add RX data
         IA_data=[]
         IA_name=[]
@@ -410,7 +421,7 @@ class runcraft(object):
             IA_data.append((self.gamma.g07.map.field.flatten()**2+self.gamma.g08.map.field.flatten()**2+self.gamma.g09.map.field.flatten()**2+self.gamma.g10.map.field.flatten()**2+self.gamma.g11.map.field.flatten()**2+self.gamma.g12.map.field.flatten()**2)**.5)
             IA_name.append('Sys_py')
 
-        if 'disttoTJ/GB' in listvar:
+        if ('dist2TJ' in listvar) or ('dist2GB' in listvar):
             im=scipy.ndimage.interpolation.zoom(self.grainId.field,2,order=0,mode='nearest')
             BB=skm.skeletonize(sks.find_boundaries(im))
 
@@ -437,13 +448,15 @@ class runcraft(object):
 
             dist_to_GB=im2d.image2d(dist_to_GB,self.grainId.res)
             dist_to_TJ=im2d.image2d(dist_to_TJ,self.grainId.res)
-            IA_data.append(dist_to_GB.field.flatten())
-            IA_name.append('dist_to_GB')
+            if ('dist2GB' in listvar):
+                IA_data.append(dist_to_GB.field.flatten())
+                IA_name.append('dist_to_GB')
+            
+            if ('dist2TJ' in listvar):
+                IA_data.append(dist_to_TJ.field.flatten())
+                IA_name.append('dist_to_TJ')
 
-            IA_data.append(dist_to_TJ.field.flatten())
-            IA_name.append('dist_to_TJ')
-
-        if 'misAngle' in listvar:
+        if ('misAngle' in listvar) or ('diff_schmid' in listvar):
             def euler2vec(phi1,phi):
                 return np.matrix([np.sin(phi1)*np.sin(phi),-np.cos(phi1)*np.sin(phi),np.cos(phi)])
 
@@ -451,6 +464,7 @@ class runcraft(object):
             ss=np.shape(self.grainId.field)
             CLg=np.zeros(ss)
             misAngle=np.zeros(ss)
+            diff_schmid=np.zeros(ss)
             print('Compute misAngle')
             for i in tqdm(range(ss[0])):
                 for j in list(range(ss[1])):
@@ -465,12 +479,20 @@ class runcraft(object):
                     id2=np.where(self.orientation[:,0]==self.grainId.field[i,j])[0][0]
 
                     misAngle[i,j]=math.acos(np.round(euler2vec(ori[id1,1],ori[id1,2])*np.transpose(euler2vec(ori[id2,1],ori[id2,2])),4))
-
-
+                    diff_schmid[i,j]=np.abs(euler2vec(ori[id1,1],ori[id1,2])[0,1]-euler2vec(ori[id2,1],ori[id2,2])[0,1])
+                    
+            # replace angle between [90 180] to [0 90] range as c=-c
+            id=misAngle>np.pi/2
+            misAngle[id]=np.pi-misAngle[id]
+            
+            
             misAngle=im2d.image2d(misAngle,self.grainId.res)
-
-            IA_data.append(misAngle.field.flatten())
-            IA_name.append('misAngle')   
+            if 'misAngle' in listvar:
+                IA_data.append(misAngle.field.flatten())
+                IA_name.append('misAngle')
+            if 'diff_schmid' in listvar:
+                IA_data.append(diff_schmid.field.flatten())
+                IA_name.append('diff_schmid') 
 
         if 'SchmidFactor' in listvar:
             Schmid_factor=np.zeros(ss) # dist to Triple Junction
@@ -504,3 +526,5 @@ class runcraft(object):
                 Head=Head+' '+IA_name[i]
 
         np.savetxt(name+'.csv',np.transpose(np.array(IA_data)),header=Head,comments='')
+        
+        return IA_data
