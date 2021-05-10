@@ -95,7 +95,7 @@ class runcraft(object):
             dim_im=3
             fim=im3d.image3d
         elif ugdim[2]==1:
-            dim_im=2ield
+            dim_im=2
             fim=im2d.image2d
         
         map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:dim_im][::-1]))
