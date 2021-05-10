@@ -95,7 +95,7 @@ class runcraft(object):
             dim_im=3
             fim=im3d.image3d
         elif ugdim[2]==1:
-            dim_im=2
+            dim_im=2ield
             fim=im2d.image2d
         
         map=vtk_to_numpy(ug.GetPointData().GetScalars()).reshape((ug.GetDimensions()[0:dim_im][::-1]))
@@ -216,7 +216,7 @@ class runcraft(object):
         [ny,nx]=self.grainId.field.shape
         
         elstrain=im2d.image2d(np.zeros([ny,nx]),self.grainId.res)
-        #print(time.strftime('%d/%m/%y %H:%M:%S',time.localtime()))  
+        #print(time.strftime('%d/%ieldm/%y %H:%M:%S',time.localtime()))  
         
         if (type(mask)==im2d.mask2d):
             idy,idx=np.where(mask.field==1)
@@ -487,6 +487,7 @@ class runcraft(object):
             
             
             misAngle=im2d.image2d(misAngle,self.grainId.res)
+            diff_schmid=im2d.image2d(diff_schmid,self.grainId.res)
             if 'misAngle' in listvar:
                 IA_data.append(misAngle.field.flatten())
                 IA_name.append('misAngle')
