@@ -90,6 +90,7 @@ class runcraft(object):
         res=ug.GetSpacing()[0]
         # extract the matrix representing the map of this scalar
         ugdim=ug.GetDimensions()
+
         
         if ugdim[2]>1:
             dim_im=3
